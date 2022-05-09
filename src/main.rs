@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
-// mod pkg_kit {
+use std::ops::{Index, IndexMut};
 
+#[derive(Debug, Clone, Copy)]
 pub struct Field {
     bit_width: u32,
     bit_mask: u32,
@@ -34,6 +35,7 @@ impl Field {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Pkg {
     field_map: HashMap<String, usize>,
     field_vec: Vec<Field>,
@@ -41,6 +43,21 @@ pub struct Pkg {
     header_size_bits: usize,
     pkg_compiled: Vec<u8>,
 }
+
+impl Index<usize> for Pkg {
+    type Output = Field;
+
+    fn index<'a>(&'a self, i: usize) -> &'a Field {
+        &self.field_vec[i]
+    }
+}
+
+impl IndexMut<usize> for Pkg {
+    fn index_mut<'a>(&'a mut self, i: usize) -> &'a mut Field {
+        &mut self.field_vec[i]
+    }
+}
+
 
 impl Pkg {
     pub fn new() -> Self {
@@ -63,7 +80,7 @@ impl Pkg {
     pub fn get_field(&mut self, name: &str) -> Option<&mut Field> {
         match self.field_map.get(name) {
             Some(v) => return self.field_vec.get_mut(*v),
-            None => return None
+            None => return None,
         }
     }
 
