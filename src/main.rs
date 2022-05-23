@@ -15,7 +15,7 @@ use pad::{Alignment, PadStr};
 pub struct Field {
     bit_width: u32,
     bit_mask: u32,
-    data: u32,
+    value: u32,
     name: String,
 }
 
@@ -24,17 +24,17 @@ impl Field {
         Self {
             bit_width: bit_width,
             bit_mask: 0xffffffff >> (32 - bit_width),
-            data: data,
+            value: data,
             name: name,
         }
     }
 
     pub fn setData(&mut self, data: u32) {
-        self.data = data & self.bit_mask;
+        self.value = data & self.bit_mask;
     }
 
     pub(crate) fn get_data(&self) -> &u32 {
-        return &self.data;
+        return &self.value;
     }
 
     pub(crate) fn get_bit_mask(&self) -> &u32 {
@@ -57,7 +57,6 @@ pub struct Pkg {
     field_vec: Vec<Field>,
     payload: Vec<u8>,
     header_bits: usize,
-    pkg_compiled: Vec<u8>,
     is_compiled: bool,
 }
 
@@ -82,7 +81,6 @@ impl Pkg {
             field_vec: vec![],
             payload: vec![],
             header_bits: 0,
-            pkg_compiled: vec![],
             is_compiled: false,
         }
     }
@@ -129,35 +127,46 @@ impl Pkg {
         return self.payload.len() + self.header_size();
     }
 
-    pub fn to_bytes(&mut self) -> &[u8] {
-        if !self.is_compiled {
-            self.compile();
-        }
-        return &self.pkg_compiled[0..self.size()];
-    }
-
-    fn compile(&mut self) {
-        let mut pkg = vec![0; self.header_size() + self.payload.len() + WORK_SPACE];
+    pub fn to_bytes(&mut self) -> Vec<u8> {
+        let mut pkg = vec![0;self.header_size() + self.payload.len()];
         let mut bits_used: u32 = 0;
-
+ 
         for field in &self.field_vec {
             let reminder: u32 = bits_used % 8;
-            let shifted =
-                (field.get_data().clone() as u64) << (64 - (reminder + field.get_bit_width()));
+            let shifted_bytes = ((field.get_data().clone() as u64) << (64 - (reminder + field.get_bit_width()))).to_be_bytes();
+            let tail = (bits_used / 8) as usize;
+            let field_byte_count = (field.get_bit_width() / 8) as usize;
+            // dbg!(shifted_bytes);
+            // dbg!(tail);
+            // dbg!(field_byte_count);
 
-            let tail = bits_used as usize / 8;
-            // Merge into header
-            pkg[tail + 0] |= ((shifted >> 56) & 0xff) as u8; // Merge
-            pkg[tail + 1] = ((shifted >> 48) & 0xff) as u8; // Inset
-            pkg[tail + 2] = ((shifted >> 40) & 0xff) as u8; // Inset
-            pkg[tail + 3] = ((shifted >> 32) & 0xff) as u8; // Inset
-            pkg[tail + 4] = ((shifted >> 24) & 0xff) as u8; // Reminder (if any)
             bits_used += field.get_bit_width();
+
+
+            for i in 0..=field_byte_count{
+                  pkg[i + tail] |= shifted_bytes[i];  
+            }
         }
         pkg[self.header_size()..self.header_size() + self.payload.len()]
             .copy_from_slice(&self.payload[..]);
-        self.is_compiled = true;
-        self.pkg_compiled = pkg;
+        return pkg;
+    }
+
+    pub fn from_bytes(&mut self, bytes: &[u8]) {
+        let mut bits_used: u32 = 0;
+
+        for field in &mut self.field_vec {
+            let tail = bits_used as usize / 8;
+            bits_used += field.get_bit_width();
+            let mut as_int: u32 = 0;
+            let field_byte_count = (field.get_bit_width() / 8) as usize;
+
+            for i in tail..=tail + field_byte_count {
+                as_int = (as_int << 8) | bytes[i] as u32;
+            }
+
+            field.value = (as_int >> (32  - field.bit_width)) & field.bit_mask;
+        }
     }
 
     fn print(&mut self) {
@@ -165,33 +174,21 @@ impl Pkg {
         println!("Pkg size    : {} bytes", self.size());
         println!("Heder size  : {} bytes", self.header_size());
         println!("Payload size: {} bytes", self.payload.len());
-        println!("-------- Fields ----------");
+        println!("-------- Fields ---------");
         println!("Name      : bits, value ");
         for field in &self.field_vec {
             println!(
                 "{:10}: {:2},   0x{:0X} ",
-                &field.name, &field.bit_width, &field.data
+                &field.name, &field.bit_width, &field.value
             )
         }
         println!("------------------------");
         println!("Bytes: {}", hex::encode(self.to_bytes()));
-        println!("{}", "header | payload".pad(15 + (self.header_size() * 2),' ', Alignment::Right, false));
+        println!(
+            "{}",
+            "header | payload".pad(15 + (self.header_size() * 2), ' ', Alignment::Right, false)
+        );
     }
-    // pub fn from_bytes(&mut self, bytes: &Vec<u8>) {
-    //     let mut asInt;
-
-    //     // let mut pkg: Vec<u8> = vec![0; self.size() + WORK_SPACE];
-    //     let mut idx: usize;
-    //     let mut bits_used: u32 = 0;
-
-    //     for field in &self.field_vec {}
-
-    //     asInt = (asInt << 8) | p[0];
-    //     asInt = (asInt << 8) | p[1];
-    //     asInt = (asInt << 8) | p[2];
-    //     asInt = (asInt << 8) | p[3];
-    //     value = (asInt >> (32 - sizeBits)) & mask;
-    // }
 
     // fn dismantle()
 }
@@ -205,9 +202,13 @@ fn main() {
     pkg.add_field("AAfield4", 1, 1);
     pkg.add_payload(vec![1, 2, 3, 4, 5]);
 
+    let p = pkg.to_bytes();
+
     pkg.print();
 
-    let mut t: u64 = 0x123456789ABCDEF;
+    pkg.from_bytes(&p);
+    pkg.print();
+
 
     // From<u64>
 
