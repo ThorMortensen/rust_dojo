@@ -2,16 +2,21 @@ extern crate hex;
 use core::fmt;
 use pad::{Alignment, PadStr};
 use std::collections::HashMap;
+use std::ops::{Index, IndexMut};
 
 use super::field::Field;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]#[allow(dead_code)]
 pub struct Pkg {
     field_map: HashMap<String, usize>,
     field_vec: Vec<Field>,
     payload: Vec<u8>,
     header_bits: usize,
     is_compiled: bool,
+}
+
+macro_rules! err_msg_no_field {
+    ($name:expr) => { &format!("Field '{}' doesn't exist!", $name).to_owned()}
 }
 
 impl Pkg {
@@ -35,16 +40,13 @@ impl Pkg {
 
     pub fn get_field_mut(&mut self, name: &str) -> &mut Field {
         self.is_compiled = false;
-        let err_msg = |n| format!("Field '{}' doesn't exist!", n);
-        let idx = *self.field_map.get(name).expect(err_msg(name).as_str());
-        return self.field_vec.get_mut(idx).expect(err_msg(name).as_str());
+        let idx = *self.field_map.get(name).expect(err_msg_no_field!(name));
+        return &mut self[idx];
     }
 
-    pub fn get_field(&mut self, name: &str) -> Option<&mut Field> {
-        match self.field_map.get(name) {
-            Some(v) => return self.field_vec.get_mut(*v),
-            None => return None,
-        }
+    pub fn get_field(&self, name: &str) -> &Field {
+        let idx = *self.field_map.get(name).expect(err_msg_no_field!(name));
+        return &self[idx];
     }
 
     pub fn add_payload(&mut self, payload: Vec<u8>) {
@@ -65,29 +67,22 @@ impl Pkg {
         return self.payload.len() + self.header_size();
     }
 
-    pub fn to_bytes(&mut self) -> Vec<u8> {
+    pub fn to_bytes(&self) -> Vec<u8> {
         let mut pkg = vec![0; self.header_size() + self.payload.len()];
         let mut bits_used: u32 = 0;
 
         for field in &self.field_vec {
             let reminder: u32 = bits_used % 8;
-            let shifted_bytes = ((field.get_data().clone() as u64)
-                << (64 - (reminder + field.get_bit_width())))
-            .to_be_bytes();
+            let shifted_bytes = ((field.get_value().clone() as u64) << (64 - (reminder + field.get_bit_width()))).to_be_bytes();
             let tail = (bits_used / 8) as usize;
             let field_byte_count = (field.get_bit_width() / 8) as usize;
-            // dbg!(shifted_bytes);
-            // dbg!(tail);
-            // dbg!(field_byte_count);
-
             bits_used += field.get_bit_width();
 
             for i in 0..=field_byte_count {
                 pkg[i + tail] |= shifted_bytes[i];
             }
         }
-        pkg[self.header_size()..self.header_size() + self.payload.len()]
-            .copy_from_slice(&self.payload[..]);
+        pkg[self.header_size()..self.header_size() + self.payload.len()].copy_from_slice(&self.payload[..]);
         return pkg;
     }
 
@@ -107,32 +102,34 @@ impl Pkg {
             field.value = (as_int >> field.bit_width) & field.bit_mask;
         }
     }
+}
 
-    pub fn print(&mut self) {
-        println!("=========================");
-        println!("Pkg size    : {} bytes", self.size());
-        println!("Heder size  : {} bytes", self.header_size());
-        println!("Payload size: {} bytes", self.payload.len());
-        println!("-------- Fields ---------");
-        println!("Name      : bits, value ");
-        for field in &self.field_vec {
-            println!(
-                "{:10}: {:2},   0x{:0X} ",
-                &field.name, &field.bit_width, &field.value
-            )
-        }
-        println!("------------------------");
-        println!("Bytes: {}", hex::encode(self.to_bytes()));
-        println!(
-            "{}",
-            "header | payload".pad(15 + (self.header_size() * 2), ' ', Alignment::Right, false)
-        );
+impl Index<usize> for Pkg {
+    type Output = Field;
+    fn index(&self, i: usize) -> &Field {
+        return self.field_vec.get(i).expect(err_msg_no_field!(&i.to_string()));
     }
 }
 
+impl IndexMut<usize> for Pkg {
+    fn index_mut(&mut self, i: usize) -> &mut Field {
+        return self.field_vec.get_mut(i).expect(err_msg_no_field!(&i.to_string()));
+    }
+}
 
-impl fmt::Debug for BlahLF {
+impl fmt::Debug for Pkg {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Hi: {}", self.id)
+        write!(f,"\n=========================\n").unwrap();
+        write!(f,"Pkg size    : {} bytes\n", self.size()).unwrap();
+        write!(f,"Heder size  : {} bytes\n", self.header_size()).unwrap();
+        write!(f,"Payload size: {} bytes\n", self.payload.len()).unwrap();
+        write!(f,"-------- Fields ---------\n").unwrap();
+        write!(f,"Name      : bits, value \n").unwrap();
+        for field in &self.field_vec {
+            write!(f,"{:?}", field).unwrap();
+        }
+        write!(f, "------------------------\n");
+        write!(f, "Bytes: {}\n", hex::encode(self.to_bytes())).unwrap();
+        write!(f, "{}", "header | payload\n".pad(15 + (self.header_size() * 2), ' ', Alignment::Right, false))
     }
 }

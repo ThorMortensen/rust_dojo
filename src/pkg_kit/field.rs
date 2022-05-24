@@ -1,4 +1,8 @@
-#[derive(Debug, Clone)]
+
+use std::fmt;
+
+#[derive(Clone)]
+#[allow(dead_code)]
 pub struct Field {
     pub(super) bit_width: u32,
     pub(super) bit_mask: u32,
@@ -6,13 +10,11 @@ pub struct Field {
     pub(super) name: String,
 }
 
-// impl fmt::Debug for Field {
-//     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-//         fmt.debug_struct("A")
-//            .field("names", &self.names)
-//            .finish()
-//     }
-// }
+impl fmt::Debug for Field {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:10}: {:2},   0x{:0X}\n", self.name, self.bit_width, self.value)
+    }
+}
 
 impl Field {
     pub(super) fn new(bit_width: u32, data: u32, name: String) -> Self {
@@ -24,15 +26,13 @@ impl Field {
         }
     }
 
-    pub fn set_data(&mut self, data: u32) {
+    pub fn set_value(&mut self, data: u32) {
         self.value = data & self.bit_mask;
     }
 
-    pub(super) fn get_data(&self) -> &u32 {
+    pub fn get_value(&self) -> &u32 {
         return &self.value;
     }
-
-    // pub(super) fn to
 
     pub(super) fn get_bit_width(&self) -> &u32 {
         return &self.bit_width;
