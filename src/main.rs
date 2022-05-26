@@ -1,5 +1,7 @@
 
+// use crate::;
 
+// use rust_dojo::pkg_kit::tests;
 
 // fn create_pkg() -> Pkg {
 
@@ -14,8 +16,12 @@
 //     return pkg;
 // }
 
+use rust_dojo::pkg_kit;
+
 
 fn main() {
+    // pkg_kit::pkg::tests::test_add_field();
+    // test_add_field();
     // let mut pkg = create_pkg();
     // let mut pkg2 = create_pkg();
 

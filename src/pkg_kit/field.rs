@@ -1,10 +1,9 @@
-
 use std::fmt;
 
-#[derive(Clone)]
+#[derive(Clone, Eq, PartialEq)]
 #[allow(dead_code)]
 pub struct Field {
-    pub(super) bit_width: u32,
+    pub(super) size: u32,
     pub(super) bit_mask: u32,
     pub(super) value: u32,
     pub(super) name: String,
@@ -12,17 +11,20 @@ pub struct Field {
 
 impl fmt::Debug for Field {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:10}: {:2},   0x{:0X}\n", self.name, self.bit_width, self.value)
+        write!(f, "{:<14}: {:>5}, 0x{:0X}\n", self.name, self.size, self.value)
     }
 }
 
+#[allow(dead_code)]
 impl Field {
-    pub(super) fn new(bit_width: u32, data: u32, name: String) -> Self {
+    pub(super) fn new(size: u32, value: u32, name: String) -> Self {
+        assert!(size <= 32, "Size is {}. Size of fields must be less that 32 bits", size);
+        let bit_mask =  0xffffffff >> (32 - size);
         Self {
-            bit_width: bit_width,
-            bit_mask: 0xffffffff >> (32 - bit_width),
-            value: data,
-            name: name,
+            size,
+            bit_mask: bit_mask,
+            value: value & bit_mask,
+            name,
         }
     }
 
@@ -34,11 +36,11 @@ impl Field {
         return &self.value;
     }
 
-    pub(super) fn get_bit_width(&self) -> &u32 {
-        return &self.bit_width;
+    pub(super) fn get_size(&self) -> &u32 {
+        return &self.size;
     }
 
-    pub(super) fn get_byte_width(&self) -> u32 {
-        return &self.bit_width / 8;
+    pub(super) fn get_byte_size(&self) -> u32 {
+        return &self.size / 8;
     }
 }
