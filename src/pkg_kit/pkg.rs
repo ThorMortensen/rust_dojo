@@ -27,13 +27,7 @@ macro_rules! err_msg_no_field {
 
 impl Pkg {
     pub fn new() -> Self {
-        Self {
-            field_map: HashMap::new(),
-            field_vec: vec![],
-            payload: vec![],
-            header_bits: 0,
-            is_compiled: false,
-        }
+        Self { field_map: HashMap::new(), field_vec: vec![], payload: vec![], header_bits: 0, is_compiled: false }
     }
 
     pub fn make_field(&mut self, name: &str, size: u32, value: u32) {
@@ -74,13 +68,12 @@ impl Pkg {
         let mut bits_used: u32 = 0;
 
         for field in &self.field_vec {
-            let reminder: u32 = bits_used % 8;
+            let reminder: u32 = bits_used % u8::BITS;
             let shifted_bytes = ((field.get_value().clone() as u64) << (64 - (reminder + field.get_size()))).to_be_bytes();
-            let tail = (bits_used / 8) as usize;
-            let field_byte_count = (field.get_size() / 8) as usize;
+            let tail = (bits_used / u8::BITS) as usize;
             bits_used += field.get_size();
 
-            for i in 0..field_byte_count {
+            for i in 0..field.get_byte_size() {
                 pkg[i + tail] |= shifted_bytes[i];
             }
         }
@@ -90,30 +83,36 @@ impl Pkg {
 
     pub fn from_bytes(&mut self, bytes: &[u8]) {
         let mut bits_used: u32 = 0;
+        let mut tail = self.header_size() as i32 - 1;
 
-        for field in &mut self.field_vec {
-            let tail = bits_used as usize / 8;
-            bits_used += field.get_size();
+        for field in self.field_vec.iter_mut().rev() {
             let mut as_int: u32 = 0;
-            let field_byte_count = (field.get_size() / 8) as usize;
+            let field_byte_count = field.get_byte_size() - 1;
 
-            for i in tail..=tail + field_byte_count {
-                as_int = (as_int << 8) | bytes[i] as u32;
+
+            for i in (tail - field_byte_count as i32)..=tail {
+                as_int = (as_int << 8) | bytes[i as usize] as u32;
             }
 
-            field.value = (as_int >> field.size) & field.bit_mask;
+            let val = (as_int >> (bits_used % 8)) & field.bit_mask;
+            field.value = val;
+
+            bits_used += field.get_size();
+
+            tail -= (bits_used / u8::BITS) as i32;
+
         }
     }
 }
 
 impl Index<usize> for Pkg {
     type Output = Field;
-    fn index (& self, i: usize) -> &Field {
+    fn index(&self, i: usize) -> &Field {
         return &self.field_vec.get(i).expect(err_msg_no_field!(&i.to_string()));
     }
 }
 
-impl IndexMut<usize> for  Pkg {
+impl IndexMut<usize> for Pkg {
     fn index_mut(&mut self, i: usize) -> &mut Field {
         return self.field_vec.get_mut(i).expect(err_msg_no_field!(&i.to_string()));
     }
@@ -126,7 +125,7 @@ impl fmt::Debug for Pkg {
         write!(f, "Heder size  : {:>4} bytes\n", self.header_size())?;
         write!(f, "Payload size: {:>4} bytes\n", self.payload.len())?;
         write!(f, "-------- Fields ---------\n")?;
-        write!(f, "Name          : bits, value \n")?;
+        write!(f, "Name          :  Bits, Value \n")?;
         for field in &self.field_vec {
             write!(f, "{:?}", field)?;
         }

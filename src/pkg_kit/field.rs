@@ -18,18 +18,13 @@ impl fmt::Debug for Field {
 #[allow(dead_code)]
 impl Field {
     pub(super) fn new(size: u32, value: u32, name: String) -> Self {
-        assert!(size <= 32, "Size is {}. Size of fields must be less that 32 bits", size);
-        let bit_mask =  0xffffffff >> (32 - size);
-        Self {
-            size,
-            bit_mask: bit_mask,
-            value: value & bit_mask,
-            name,
-        }
+        assert!(size <= u32::BITS, "Size is {}. Size of fields must be less that 32 bits", size);
+        let bit_mask = 0xffffffff >> (u32::BITS - size);
+        Self { size, bit_mask: bit_mask, value: value & bit_mask, name }
     }
 
-    pub fn set_value(&mut self, data: u32) {
-        self.value = data & self.bit_mask;
+    pub fn set_value(&mut self, value: u32) {
+        self.value = value & self.bit_mask;
     }
 
     pub fn get_value(&self) -> &u32 {
@@ -40,7 +35,10 @@ impl Field {
         return &self.size;
     }
 
-    pub(super) fn get_byte_size(&self) -> u32 {
-        return &self.size / 8;
+    pub(super) fn get_byte_size(&self) -> usize {
+        if self.size > u8::BITS {
+            return (((self.size - 1) / u8::BITS) + 1) as usize;
+        }
+        return 1;
     }
 }
