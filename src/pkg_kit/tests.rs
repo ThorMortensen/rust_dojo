@@ -115,17 +115,19 @@ fn test_serialize_header() {
 
     pkg_out.make_field("field0", 1, 0);
     pkg_out.make_field("field1", 7, 0);
+    pkg_out.make_field("field2", 16, 0);
 
     let mut pkg_in = pkg_out.clone();
 
     pkg_out.get_field_mut("field0").set_value(0x1);
     pkg_out.get_field_mut("field1").set_value(0x18);
+    pkg_out.get_field_mut("field2").set_value(0x8001);
 
     pkg_in.from_bytes(&pkg_out.to_bytes());
 
     dbg!(&pkg_out);
     dbg!(&pkg_in);
-    assert_eq!(hex::encode(pkg_in.to_bytes()).to_ascii_uppercase(), "98");
+    assert_eq!(hex::encode(pkg_in.to_bytes()).to_ascii_uppercase(), "988001");
 }
 
 #[test]
@@ -140,7 +142,7 @@ fn test_serialize_with_payload() {
     pkg_out.make_field("field4", 1, 0);
     pkg_out.make_field("field5", 1, 1);
     pkg_out.make_field("field6", 1, 0);
-    pkg_out.make_field("field7", 4, 0);
+    pkg_out.make_field("field7", 4, 9);
 
     pkg_in.make_field("field0", 12, 0);
     pkg_in.make_field("field1", 2, 0);
@@ -151,10 +153,9 @@ fn test_serialize_with_payload() {
     pkg_in.make_field("field6", 1, 0);
     pkg_in.make_field("field7", 4, 0);
 
-    // assert_eq!(hex::encode(pkg.to_bytes()).to_ascii_uppercase(), "B7B720");
 
-    // let pl: Vec<u8> = vec![0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF];
-    // pkg_out.add_payload(pl);
+    let pl: Vec<u8> = vec![0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF];
+    pkg_out.add_payload(pl);
 
     let out = pkg_out.to_bytes();
 
@@ -162,5 +163,6 @@ fn test_serialize_with_payload() {
 
     dbg!(&pkg_out);
     dbg!(&pkg_in);
-    assert_eq!(hex::encode(pkg_in.to_bytes()).to_ascii_uppercase(), "B7B7200102030405060708090A0B0C0D0E0F");
+    assert_eq!(hex::encode(pkg_out.to_bytes()).to_ascii_uppercase(), "B7B7290102030405060708090A0B0C0D0E0F");
+    assert_eq!(hex::encode(pkg_in.to_bytes()).to_ascii_uppercase(), "B7B7290102030405060708090A0B0C0D0E0F");
 }

@@ -68,8 +68,7 @@ impl Pkg {
         let mut bits_used: u32 = 0;
 
         for field in &self.field_vec {
-            let reminder: u32 = bits_used % u8::BITS;
-            let shifted_bytes = ((field.get_value().clone() as u64) << (64 - (reminder + field.get_size()))).to_be_bytes();
+            let shifted_bytes = ((field.get_value().clone() as u64) << (64 - ((bits_used % u8::BITS) + field.get_size()))).to_be_bytes();
             let tail = (bits_used / u8::BITS) as usize;
             bits_used += field.get_size();
 
@@ -77,30 +76,28 @@ impl Pkg {
                 pkg[i + tail] |= shifted_bytes[i];
             }
         }
+
         pkg[self.header_size()..self.header_size() + self.payload.len()].copy_from_slice(&self.payload[..]);
         return pkg;
     }
 
     pub fn from_bytes(&mut self, bytes: &[u8]) {
         let mut bits_used: u32 = 0;
-        let mut tail = self.header_size() as i32 - 1;
+        let head_end = self.header_size();
+        self.payload = bytes[head_end..].to_vec();
 
+        // Reverse order of fields read from vec to ease offset calc
         for field in self.field_vec.iter_mut().rev() {
             let mut as_int: u32 = 0;
-            let field_byte_count = field.get_byte_size() - 1;
+            let tail = head_end - (bits_used / 8) as usize;
+            let head = tail - field.get_byte_size();
 
-
-            for i in (tail - field_byte_count as i32)..=tail {
-                as_int = (as_int << 8) | bytes[i as usize] as u32;
+            for i in head..tail {
+                as_int = (as_int << 8) | bytes[i] as u32;
             }
 
-            let val = (as_int >> (bits_used % 8)) & field.bit_mask;
-            field.value = val;
-
+            field.value = (as_int >> (bits_used % 8)) & field.bit_mask;
             bits_used += field.get_size();
-
-            tail -= (bits_used / u8::BITS) as i32;
-
         }
     }
 }
