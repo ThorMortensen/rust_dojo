@@ -1,11 +1,19 @@
-[package]
-name = "rust_dojo"
-version = "0.1.0"
-edition = "2021"
+[workspace]
+members = [
+  # "pkg-kit",
+  "dojo-run",
+  "dojo-tetris"
+]
+
+
+# [package]
+# name = "rust_dojo"
+# version = "0.1.0"
+# edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[dependencies]
-hex = "0.4.3"
-pad = "0.1.6"
-rand = "0.8.3"
+# [dependencies]
+# hex = "0.4.3"
+# pad = "0.1.6"
+# rand = "0.8.3"

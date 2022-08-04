@@ -1,0 +1,4 @@
+# TODO: Add reason after Rust has been bumped to 1.58.1
+disallowed-methods = [
+    "std::path::Path::exists",
+]
