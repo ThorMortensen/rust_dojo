@@ -1,6 +1,5 @@
 use pkg_kit::pkg::Pkg;
 
-
 fn main() {
     let mut pkg = Pkg::new();
     pkg.make_field("field0", 8, 1);
@@ -10,7 +9,6 @@ fn main() {
     // let out = pkg.to_bytes();
     dbg!(pkg);
 }
-
 
 // #[derive(Debug, Copy, Clone)]
 // struct Bar {

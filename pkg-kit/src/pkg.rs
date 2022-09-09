@@ -27,7 +27,13 @@ macro_rules! err_msg_no_field {
 
 impl Pkg {
     pub fn new() -> Self {
-        Self { field_map: HashMap::new(), field_vec: vec![], payload: vec![], header_bits: 0, is_compiled: false }
+        Self {
+            field_map: HashMap::new(),
+            field_vec: vec![],
+            payload: vec![],
+            header_bits: 0,
+            is_compiled: false,
+        }
     }
 
     pub fn make_field(&mut self, name: &str, size: u32, value: u32) {

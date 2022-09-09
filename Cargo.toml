@@ -4,3 +4,7 @@ members = [
   "dojo-run",
   "dojo-tetris"
 ]
+
+
+
+resolver = "2"
